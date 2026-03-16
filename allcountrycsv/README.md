@@ -10,6 +10,16 @@
 python drawdown.py 253425.csv
 ```
 
+CSVファイルを指定しない場合:
+
+```bash
+python drawdown.py
+```
+
+この場合、以下のURLからCSVをダウンロードして `allcountrycsv/253425.csv` を上書きしてから処理する。
+
+- https://www.am.mufg.jp/fund_file/setteirai/253425.csv
+
 ## 入力仕様
 
 - **ファイル形式:** CSV（Shift_JIS エンコーディング）
@@ -58,3 +68,5 @@ python drawdown.py 253425.csv
 
 - 基準価額が空欄・不正値の行はスキップする
 - 日付は昇順（古い→新しい）で格納されている前提
+- 引数なし実行時は毎回CSVをダウンロードする
+- 引数なし実行時にダウンロード失敗した場合は終了コード1でエラー終了する

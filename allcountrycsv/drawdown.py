@@ -1,6 +1,12 @@
 import csv
 import sys
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
+
+
+DEFAULT_CSV_URL = "https://www.am.mufg.jp/fund_file/setteirai/253425.csv"
+DEFAULT_CSV_FILENAME = "253425.csv"
 
 
 def format_price(value: float) -> str:
@@ -20,6 +26,18 @@ def resolve_input_path(arg: str) -> Path:
         return candidate
 
     return provided
+
+
+def download_default_csv(script_dir: Path) -> Path:
+    target_path = script_dir / DEFAULT_CSV_FILENAME
+    try:
+        with urlopen(DEFAULT_CSV_URL, timeout=30) as response:
+            data = response.read()
+    except URLError as e:
+        raise RuntimeError(f"CSVのダウンロードに失敗しました: {e}") from e
+
+    target_path.write_bytes(data)
+    return target_path
 
 
 def process_csv(csv_path: Path) -> None:
@@ -66,11 +84,20 @@ def process_csv(csv_path: Path) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("使い方: python drawdown.py <csvファイル名>")
+    if len(sys.argv) > 2:
+        print("使い方: python drawdown.py [csvファイル名]")
         return 1
 
-    csv_path = resolve_input_path(sys.argv[1])
+    script_dir = Path(__file__).resolve().parent
+    if len(sys.argv) == 2:
+        csv_path = resolve_input_path(sys.argv[1])
+    else:
+        try:
+            csv_path = download_default_csv(script_dir)
+        except RuntimeError as e:
+            print(e)
+            return 1
+
     if not csv_path.exists():
         print(f"ファイルが見つかりません: {csv_path}")
         return 1
