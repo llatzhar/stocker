@@ -1,0 +1,24 @@
+name: Daily Stock Notifier
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # UTC 03:00 = JST 12:00（CSV更新余裕を持たせて昼実行）
+  workflow_dispatch:      # GitHub UI から手動実行も可能
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run notifier
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python stock_notifier/notifier.py
