@@ -3,7 +3,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 FUND_CODE = "253425"
@@ -92,16 +92,30 @@ def build_message(rows: list[tuple[str, float]]) -> str:
 
 def notify_discord(webhook_url: str, message: str) -> None:
     payload = json.dumps({"content": message}).encode("utf-8")
+    post_url = webhook_url if "?" in webhook_url else f"{webhook_url}?wait=true"
     req = Request(
-        webhook_url,
+        post_url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "stock-notifier/1.0",
+            "Accept": "application/json",
+        },
         method="POST",
     )
     try:
         with urlopen(req, timeout=10) as response:
             if response.status not in (200, 204):
                 raise RuntimeError(f"Discord通知失敗: HTTP {response.status}")
+    except HTTPError as e:
+        detail = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+            if body:
+                detail = f" body={body}"
+        except Exception:
+            pass
+        raise RuntimeError(f"Discord通知失敗: HTTP {e.code}{detail}") from e
     except URLError as e:
         raise RuntimeError(f"Discord通知失敗: {e}") from e
 
