@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -11,13 +12,30 @@ CSV_URL = f"https://www.am.mufg.jp/fund_file/setteirai/{FUND_CODE}.csv"
 JST = timezone(timedelta(hours=9))
 
 
-def download_csv() -> bytes:
+def download_csv(*, max_retries: int = 3, retry_delay: float = 10.0) -> bytes:
     req = Request(CSV_URL, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urlopen(req, timeout=30) as response:
-            return response.read()
-    except URLError as e:
-        raise RuntimeError(f"CSVの取得に失敗しました: {e}") from e
+    last_error: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            with urlopen(req, timeout=30) as response:
+                return response.read()
+        except HTTPError as e:
+            last_error = e
+            if e.code in (403, 429, 500, 502, 503, 504) and attempt < max_retries - 1:
+                print(f"HTTP {e.code} — {retry_delay}秒後にリトライします ({attempt + 1}/{max_retries})",
+                      file=sys.stderr)
+                time.sleep(retry_delay)
+                continue
+            break
+        except URLError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                print(f"接続エラー — {retry_delay}秒後にリトライします ({attempt + 1}/{max_retries})",
+                      file=sys.stderr)
+                time.sleep(retry_delay)
+                continue
+            break
+    raise RuntimeError(f"CSVの取得に失敗しました: {last_error}") from last_error
 
 
 def parse_csv(data: bytes) -> list[tuple[str, float]]:
