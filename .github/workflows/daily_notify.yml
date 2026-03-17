@@ -2,7 +2,7 @@ name: Daily Stock Notifier
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # UTC 03:00 = JST 12:00（CSV更新余裕を持たせて昼実行）
+    - cron: '39 4 * * *'  # UTC 03:00 = JST 12:00（CSV更新余裕を持たせて昼実行）
   workflow_dispatch:      # GitHub UI から手動実行も可能
 
 jobs:
