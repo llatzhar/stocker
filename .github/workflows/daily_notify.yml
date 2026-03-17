@@ -1,4 +1,4 @@
-name: Daily Stock Notifier
+name: Daily Stock Notifier 2
 
 on:
   schedule:
