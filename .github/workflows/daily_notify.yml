@@ -2,7 +2,7 @@ name: Daily Stock Notifier 2
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '*/5 * * * *'
 
 jobs:
   notify:
