@@ -3,13 +3,14 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time as datetime_time, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 FUND_CODE = "253425"
 CSV_URL = f"https://www.am.mufg.jp/fund_file/setteirai/{FUND_CODE}.csv"
 JST = timezone(timedelta(hours=9))
+TODAY_DATA_MAX_AGE_HOURS = 24
 
 
 def download_csv(*, max_retries: int = 3, retry_delay: float = 10.0) -> bytes:
@@ -60,14 +61,17 @@ def parse_csv(data: bytes) -> list[tuple[str, float]]:
 
 
 def is_today_data(last_date_str: str) -> bool:
-    """CSV最終行の日付が実行日（JST）と0〜1日差以内であれば本日分と判断する。"""
-    today_jst = datetime.now(JST).date()
+    """CSV最終行の日付がJSTで一定時間以内なら本日分と判断する。"""
+    now_jst = datetime.now(JST)
     try:
         last_date = datetime.strptime(last_date_str, "%Y/%m/%d").date()
     except ValueError:
         return False
-    diff = (today_jst - last_date).days
-    return 0 <= diff <= 1
+    # datetime_time(0, 0) = その日の 00:00
+    last_datetime_jst = datetime.combine(last_date, datetime_time(0, 0), tzinfo=JST)
+    age = now_jst - last_datetime_jst
+    max_age = timedelta(hours=TODAY_DATA_MAX_AGE_HOURS)
+    return timedelta(0) <= age <= max_age
 
 
 def format_price(value: float) -> str:
