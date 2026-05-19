@@ -7,7 +7,8 @@ from urllib.request import urlopen
 
 DEFAULT_CSV_URL = "https://www.am.mufg.jp/fund_file/setteirai/253425.csv"
 DEFAULT_CSV_FILENAME = "253425.csv"
-
+#DEFAULT_THRESHOLD_STEP = 3.0
+DEFAULT_THRESHOLD_STEP = 5.0
 
 def format_price(value: float) -> str:
     if value.is_integer():
@@ -42,7 +43,7 @@ def download_default_csv(script_dir: Path) -> Path:
 
 def process_csv(csv_path: Path) -> None:
     peak_price = None
-    next_threshold = 3.0
+    next_threshold = DEFAULT_THRESHOLD_STEP
 
     with csv_path.open("r", encoding="cp932", newline="") as f:
         reader = csv.reader(f)
@@ -67,7 +68,7 @@ def process_csv(csv_path: Path) -> None:
 
             if peak_price is None or current_price > peak_price:
                 peak_price = current_price
-                next_threshold = 3.0
+                next_threshold = DEFAULT_THRESHOLD_STEP
                 continue
 
             if peak_price <= 0:
@@ -80,7 +81,7 @@ def process_csv(csv_path: Path) -> None:
                     f"{date_str}: 最高値 {format_price(peak_price)} → 現在値 {format_price(current_price)} "
                     f"(-{drawdown_pct:.1f}%) [{int(next_threshold)}%ドローダウン突破]"
                 )
-                next_threshold += 3.0
+                next_threshold += DEFAULT_THRESHOLD_STEP
 
 
 def main() -> int:
