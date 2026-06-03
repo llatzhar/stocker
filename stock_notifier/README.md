@@ -29,20 +29,22 @@ python stock_notifier/notifier.py
 
 ## 動作仕様
 
-通知対象は以下の2ファンド。
+通知対象は以下の3ファンド。
 
 | 表示名 | 取得元 | URL |
 |---|---|---|
 | `253425` | MUFG CSV | `https://www.am.mufg.jp/fund_file/setteirai/253425.csv` |
+| `254624` | MUFG CSV | `https://www.am.mufg.jp/fund_file/setteirai/254624.csv` |
 | `NASDAQ100` | 楽天証券ファンド詳細ページ | `https://www.rakuten-sec.co.jp/web/fund/detail/?ID=JP90C000QF22` |
 
-各ファンドは独立して処理する。片方の取得・解析・Discord送信が失敗しても、もう片方の処理は継続する。終了コードは、いずれか1件でも失敗した場合は `1`、すべて成功した場合は `0`。
+各ファンドは独立して処理する。あるファンドの取得・解析・Discord送信が失敗しても、他ファンドの処理は継続する。終了コードは、いずれか1件でも失敗した場合は `1`、すべて成功した場合は `0`。
 
 ### 1. CSVの取得
 
-以下のURLから基準価額CSVを毎回ダウンロードする。
+MUFG CSV ファンドは、以下のURLから基準価額CSVを毎回ダウンロードする。
 
 - `https://www.am.mufg.jp/fund_file/setteirai/253425.csv`
+- `https://www.am.mufg.jp/fund_file/setteirai/254624.csv`
 
 ### 2. 更新行の検出
 
@@ -62,7 +64,7 @@ python stock_notifier/notifier.py
 
 ### 4. 更新あり時の通知
 
-CSVの全行を走査して過去最高値を算出し（drawdown.py と同じロジック）、最終行のデータと比較して通知を送信する。
+CSVの全行を走査して過去最高値を算出し（drawdown.py と同じロジック）、最終行のデータと比較して通知を送信する。`254624` も同じ仕様で、表示名だけが商品コードに変わる。
 
 #### 通知フォーマット
 
@@ -202,6 +204,6 @@ sudo crontab -e
 - 日付は昇順（古い→新しい）で格納されている前提
 - タイムゾーンは JST 固定で判定する
 - 状態ファイルは保持しないため、手動再実行時の重複通知は許容する
-- ダウンロード失敗時は Discord に `【253425】CSVの取得に失敗しました` と通知して終了コード1
+- MUFG CSV のダウンロード失敗時は Discord に `【商品コード】CSVの取得に失敗しました` と通知して終了コード1
 - 楽天ページは `Content-Type` の charset でデコードし、charset 未指定時は UTF-8 として扱う
 - 楽天ページのHTML構造が変わって必要な値を抽出できない場合は失敗通知を送る

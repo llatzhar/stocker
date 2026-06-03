@@ -10,11 +10,15 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 FUND_CODE = "253425"
-CSV_URL = f"https://www.am.mufg.jp/fund_file/setteirai/{FUND_CODE}.csv"
+MUFG_CSV_FUND_CODES = ("253425", "254624")
 RAKUTEN_FUND_LABEL = "NASDAQ100"
 RAKUTEN_URL = "https://www.rakuten-sec.co.jp/web/fund/detail/?ID=JP90C000QF22"
 JST = timezone(timedelta(hours=9))
 TODAY_DATA_MAX_AGE_HOURS = 24
+
+
+def mufg_csv_url(fund_code: str) -> str:
+    return f"https://www.am.mufg.jp/fund_file/setteirai/{fund_code}.csv"
 
 
 def download_page(
@@ -48,9 +52,14 @@ def download_page(
     raise RuntimeError(f"ページの取得に失敗しました: {last_error}") from last_error
 
 
-def download_csv(*, max_retries: int = 3, retry_delay: float = 10.0) -> bytes:
+def download_csv(
+    url: str,
+    *,
+    max_retries: int = 3,
+    retry_delay: float = 10.0,
+) -> bytes:
     try:
-        data, _charset = download_page(CSV_URL, max_retries=max_retries, retry_delay=retry_delay)
+        data, _charset = download_page(url, max_retries=max_retries, retry_delay=retry_delay)
     except RuntimeError as error:
         raise RuntimeError(f"CSVの取得に失敗しました: {error}") from error
     return data
@@ -262,16 +271,16 @@ def notify_discord(webhook_url: str, message: str) -> None:
         raise RuntimeError(f"Discord通知失敗: {error}") from error
 
 
-def build_mufg_message() -> str:
-    data = download_csv()
+def build_mufg_message(fund_code: str = FUND_CODE) -> str:
+    data = download_csv(mufg_csv_url(fund_code))
     rows = parse_csv(data)
     if not rows:
         raise ValueError("CSVにデータがありません")
 
     last_date = rows[-1][0]
     if not is_today_data(last_date):
-        return f"【{FUND_CODE}】本日のデータなし"
-    return build_message(rows)
+        return f"【{fund_code}】本日のデータなし"
+    return build_message(rows, label=fund_code)
 
 
 def build_rakuten_message() -> str:
@@ -327,11 +336,14 @@ def main() -> int:
         return 1
 
     handlers = [
-        {
-            "label": FUND_CODE,
-            "build_message_func": build_mufg_message,
-            "fetch_failure_message": f"【{FUND_CODE}】CSVの取得に失敗しました",
-        },
+        *[
+            {
+                "label": fund_code,
+                "build_message_func": lambda fund_code=fund_code: build_mufg_message(fund_code),
+                "fetch_failure_message": f"【{fund_code}】CSVの取得に失敗しました",
+            }
+            for fund_code in MUFG_CSV_FUND_CODES
+        ],
         {
             "label": RAKUTEN_FUND_LABEL,
             "build_message_func": build_rakuten_message,
